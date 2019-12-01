@@ -216,7 +216,7 @@ static int btrfs_init_dev_replace_tgtdev(struct btrfs_fs_info *fs_info,
 
 
 	if (i_size_read(bdev->bd_inode) <
-	    btrfs_device_get_total_bytes(srcdev)) {
+	    btrfs_device_get_bytes_used(srcdev)) {
 		btrfs_err(fs_info,
 			  "target device is smaller than source device!");
 		ret = -EINVAL;
@@ -243,8 +243,10 @@ static int btrfs_init_dev_replace_tgtdev(struct btrfs_fs_info *fs_info,
 	device->io_width = fs_info->sectorsize;
 	device->io_align = fs_info->sectorsize;
 	device->sector_size = fs_info->sectorsize;
-	device->total_bytes = btrfs_device_get_total_bytes(srcdev);
-	device->disk_total_bytes = btrfs_device_get_disk_total_bytes(srcdev);
+	device->total_bytes = round_down(
+		i_size_read(bdev->bd_inode),
+		fs_info->sectorsize);
+	device->disk_total_bytes = device->total_bytes;
 	device->bytes_used = btrfs_device_get_bytes_used(srcdev);
 	device->commit_total_bytes = srcdev->commit_total_bytes;
 	device->commit_bytes_used = device->bytes_used;
@@ -671,9 +673,6 @@ static int btrfs_dev_replace_finishing(struct btrfs_fs_info *fs_info,
 	memcpy(uuid_tmp, tgt_device->uuid, sizeof(uuid_tmp));
 	memcpy(tgt_device->uuid, src_device->uuid, sizeof(tgt_device->uuid));
 	memcpy(src_device->uuid, uuid_tmp, sizeof(src_device->uuid));
-	btrfs_device_set_total_bytes(tgt_device, src_device->total_bytes);
-	btrfs_device_set_disk_total_bytes(tgt_device,
-					  src_device->disk_total_bytes);
 	btrfs_device_set_bytes_used(tgt_device, src_device->bytes_used);
 	tgt_device->commit_bytes_used = src_device->bytes_used;
 
